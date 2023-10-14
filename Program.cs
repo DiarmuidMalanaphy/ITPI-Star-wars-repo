@@ -82,7 +82,7 @@ app.MapGet("/api/planets/{ids}", async (string ids) =>
     return Results.Ok(allPlanets);
 });
 
-// Get favourite planets
+// Get all favourite planets
 
 
 app.MapGet("/api/favouritePlanets/all", async (PlanetDB db) => 
@@ -171,6 +171,32 @@ app.MapDelete("/api/deletefavourite/{id}", async (int id, PlanetDB db) =>
     return Results.NotFound();
 });
 
+app.MapGet("/api/getRandomNonFavourite/",async (PlanetDB db) =>
+{
+    //Going to implement a Naive solution to this problem 
+    // Go through the planetInfo db and get all the id numbers from that
+    var favouriteIds = await db.Planets
+                                .Select(p => p.Id)
+                                .ToListAsync();
+    
+    
+    //randomly generate a number 1-59 and check if it's in the list if it's not call the get planet function to get the
+    //planet at that number.
+    Random rand = new Random();
+    int randomId;
+    do
+    {
+        randomId = rand.Next(1, 59);
+    } while (favouriteIds.Contains(randomId));
+
+    Planet randomPlanet = await getPlanetAsync(randomId);
+
+    //return that planet/
+    return Results.Ok(randomPlanet);
+
+
+}  );
+
 
 //Function to get planets based on an API id, may expand this to look at db first
 
@@ -190,5 +216,7 @@ async Task<Planet> getPlanetAsync (int APIid){
         }
     throw new HttpRequestException($"Failed to fetch planet. Status code: {response.StatusCode}");
 }
+
+
 
 app.Run();
