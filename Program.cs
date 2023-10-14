@@ -60,12 +60,11 @@ app.MapGet("/api/planets/all", async () =>
     return Results.Ok(allPlanets);
 });
 
-// Get a list of planets.
+// Get a list of planets based on IDs.
+
 app.MapGet("/api/planets/{ids}", async (string ids) =>
 {
     List<int> planetIds = ids.Split(',').Select(int.Parse).ToList();
-
-    
     List<Planet> allPlanets = new List<Planet>();
     foreach (int id in planetIds){
 
@@ -79,7 +78,7 @@ app.MapGet("/api/planets/{ids}", async (string ids) =>
                 }
             }
     
-    Console.WriteLine(allPlanets);
+    
     return Results.Ok(allPlanets);
 });
 
@@ -118,35 +117,40 @@ app.MapGet("/api/favouritePlanets/all", async (PlanetDB db) =>
 
 // Make planet a favourite
 
-app.MapPost("/api/addfavouritePlanet/{id}", async (int id, PlanetDB db) =>
+app.MapPost("/api/addfavouritePlanet/{ids}", async (string ids, PlanetDB db) =>
 {
     try 
-        {
-        //Check if planet already exists.
-        try{
-            if (await db.Planets.AnyAsync(p => p.Id == id))
-        
-                return Results.Conflict("Planet already favourited.");
-        }
-        catch{
-            
-        }
-        //If not
-        
-        Planet planet = await getPlanetAsync(id);
-        PlanetInfo planetInfo = new PlanetInfo(id,JsonConvert.SerializeObject(planet),true);
-       
-        db.Planets.Add(planetInfo);
-        await db.SaveChangesAsync();
-
-        return Results.NoContent();
-        }
-    catch(Exception e) 
     {
-    // log the exception
-    return Results.Created("An error occurred while processing your request.",500);
-}
-});
+        
+        List<int> planetIds = ids.Split(',').Select(int.Parse).ToList();
+        
+        foreach (int id in planetIds){
+
+            
+            // Check if planet already exists.
+            try{
+                if (await db.Planets.AnyAsync(p => p.Id == id))
+                    return Results.Conflict("Planet already favourited.");
+                }
+            catch {}
+            // If doesn't already exist
+            
+            Planet planet = await getPlanetAsync(id);
+            PlanetInfo planetInfo = new PlanetInfo(id,JsonConvert.SerializeObject(planet),true);
+            db.Planets.Add(planetInfo);
+        }
+
+        // No need to do several changes.
+        await db.SaveChangesAsync();
+        return Results.NoContent();
+
+        }
+        catch(Exception e) 
+        {
+        // log the exception
+            return Results.Created("An error occurred while processing your request.",500);
+        }
+    });
 
 // Delete a planet from favourites.
 
@@ -181,9 +185,6 @@ async Task<Planet> getPlanetAsync (int APIid){
         string content = await response.Content.ReadAsStringAsync();
 
         Planet planet = JsonConvert.DeserializeObject<Planet>(content);
-        
-        
-        
 
         return(planet);
         }
