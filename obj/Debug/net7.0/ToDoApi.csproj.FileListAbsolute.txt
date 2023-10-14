@@ -28,3 +28,9 @@ c:\Users\liver\OneDrive\Documents\ToDoApi\obj\Debug\net7.0\refint\ToDoApi.dll
 c:\Users\liver\OneDrive\Documents\ToDoApi\obj\Debug\net7.0\ToDoApi.pdb
 c:\Users\liver\OneDrive\Documents\ToDoApi\obj\Debug\net7.0\ToDoApi.genruntimeconfig.cache
 c:\Users\liver\OneDrive\Documents\ToDoApi\obj\Debug\net7.0\ref\ToDoApi.dll
+c:\Users\liver\OneDrive\Documents\ToDoApi\bin\Debug\net7.0\Microsoft.EntityFrameworkCore.dll
+c:\Users\liver\OneDrive\Documents\ToDoApi\bin\Debug\net7.0\Microsoft.EntityFrameworkCore.Abstractions.dll
+c:\Users\liver\OneDrive\Documents\ToDoApi\bin\Debug\net7.0\Microsoft.EntityFrameworkCore.InMemory.dll
+c:\Users\liver\OneDrive\Documents\ToDoApi\obj\Debug\net7.0\ToDoApi.csproj.AssemblyReference.cache
+c:\Users\liver\OneDrive\Documents\ToDoApi\obj\Debug\net7.0\ToDoApi.csproj.CopyComplete
+c:\Users\liver\OneDrive\Documents\ToDoApi\bin\Debug\net7.0\Newtonsoft.Json.dll

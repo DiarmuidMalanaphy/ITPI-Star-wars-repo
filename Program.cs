@@ -22,10 +22,11 @@ var app = builder.Build();
 
 // Get all planets from swapi
 
-app.MapGet("/api/planets", async () =>
+app.MapGet("/api/planets/all", async () =>
 {
     using var httpClient = new HttpClient();
-    List<Dictionary<string, object>> allPlanets = new List<Dictionary<string, object>>();
+    List<Planet> allPlanets = new List<Planet>();
+
 
     string nextUrl = "https://swapi.dev/api/planets/";
     
@@ -40,22 +41,9 @@ app.MapGet("/api/planets", async () =>
                     JArray planets = (JArray)jsonResponse["results"];
                     foreach (JObject Jplanet in planets){
                         Planet planet = JsonConvert.DeserializeObject<Planet>(Jplanet.ToString());
-                        var planetDict = new Dictionary<string, object>
-                        {
-                            {"Name", planet.Name},
-                            {"RotationPeriod", planet.rotation_period},
-                            {"OrbitalPeriod", planet.orbital_period},
-                            {"Diameter", planet.Diameter},
-                            {"Climate", planet.Climate},
-                            {"Gravity", planet.Gravity},
-                            {"Terrain", planet.Terrain},
-                            {"SurfaceWater", planet.surface_water},
-                            {"Population", planet.Population},
-                            {"Residents", planet.Residents},
-                            {"Url", planet.Url}
-                        };
+                        
 
-                        allPlanets.Add(planetDict);
+                        allPlanets.Add(planet);
 
                     }
                     
@@ -68,7 +56,7 @@ app.MapGet("/api/planets", async () =>
                     nextUrl = null;
                 }
             }
-    //Console.WriteLine(JsonConvert.SerializeObject(allPlanets, Formatting.Indented));
+    
     return Results.Ok(allPlanets);
 });
 
@@ -77,37 +65,13 @@ app.MapGet("/api/planets/{ids}", async (string ids) =>
 {
     List<int> planetIds = ids.Split(',').Select(int.Parse).ToList();
 
-    //List<Planet> allPlanets = new List<Planet>();
-    //List<Dictionary<string, object>> allPlanets = new List<Dictionary<string, object>>();
+    
     List<Planet> allPlanets = new List<Planet>();
     foreach (int id in planetIds){
 
-    
-                
-                
             try {
                 Planet planet = await getPlanetAsync(id);
-                /*
-                //var planetDict = new Dictionary<string, object>
-                //{
-                //        {"Name", planet.Name},
-                //        {"RotationPeriod", planet.rotation_period},
-                //        {"OrbitalPeriod", planet.orbital_period},
-                //        {"Diameter", planet.Diameter},
-                        // {"Climate", planet.Climate},
-                        {"Gravity", planet.Gravity},
-                        {"Terrain", planet.Terrain},
-                        {"SurfaceWater", planet.surface_water},
-                        {"Population", planet.Population},
-                        {"Residents",  planet.Residents},
-                        {"Url", planet.Url}
-                    };
-
-                    allPlanets.Add(planetDict);
-                */
                 allPlanets.Add(planet);    
-
-                    
                 }
             catch
                 {
@@ -119,16 +83,25 @@ app.MapGet("/api/planets/{ids}", async (string ids) =>
     return Results.Ok(allPlanets);
 });
 
-
-// Get all planets.
-app.MapGet("/api/planets", async (PlanetDB db) =>
-    await db.Planets.ToListAsync());
-
 // Get favourite planets
 
 
-app.MapGet("/api/favouritePlanets", async (PlanetDB db) =>
-    await db.Planets.Where(p => p.IsFavourite).ToListAsync());
+app.MapGet("/api/favouritePlanets/all", async (PlanetDB db) => 
+{
+    var favouritePlanetsInfo = await db.Planets.Where(p => p.IsFavourite).ToListAsync();
+    var favouritePlanets = new List<Planet>();
+
+    foreach (var planetInfo in favouritePlanetsInfo)
+    {
+        // Deserialize planetInfo.SerializedPlanet into a Planet object
+        Planet planet = JsonConvert.DeserializeObject<Planet>(planetInfo.serialisedPlanet);
+        
+        // Add the Planet object to the list
+        favouritePlanets.Add(planet);
+    }
+
+    return Results.Ok(favouritePlanets);
+});
 
 
 // Get Planet based off of ID
@@ -166,7 +139,7 @@ app.MapPost("/api/addfavouritePlanet/{id}", async (int id, PlanetDB db) =>
         db.Planets.Add(planetInfo);
         await db.SaveChangesAsync();
 
-        return Results.Created($"/favouritePlanets/{id}", planet);
+        return Results.NoContent();
         }
     catch(Exception e) 
     {
@@ -176,19 +149,24 @@ app.MapPost("/api/addfavouritePlanet/{id}", async (int id, PlanetDB db) =>
 });
 
 // Delete a planet from favourites.
-/*
-app.MapDelete("/api/favouritePlanets/{id}", async (int id, PlanetDB db) =>
+
+app.MapDelete("/api/deletefavourite/{id}", async (int id, PlanetDB db) =>
 {
-    if (await db.Planets.FindAsync(id) is Planet planet)
+    // Look for the planet info with the given id
+    var planetInfo = await db.Planets.FindAsync(id);
+
+    if (planetInfo != null)
     {
-        db.Planets.Remove(planet);
+        // Remove the planet info from the database
+        db.Planets.Remove(planetInfo);
         await db.SaveChangesAsync();
+
         return Results.NoContent();
     }
 
     return Results.NotFound();
 });
-*/
+
 
 //Function to get planets based on an API id, may expand this to look at db first
 
