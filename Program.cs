@@ -216,7 +216,11 @@ async Task<Planet> getPlanetAsync (int APIid){
         }
     throw new HttpRequestException($"Failed to fetch planet. Status code: {response.StatusCode}");
 }
-
+app.UseDefaultFiles(new DefaultFilesOptions
+{
+    DefaultFileNames = new List<string> { "html/index.html" }
+});
+app.UseStaticFiles();
 
 
 app.Run();

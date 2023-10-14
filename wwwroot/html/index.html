@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Planet Search</title>
+</head>
+<body>
+    
+
+
+<!DOCTYPE html>
+<html>
+<body>
+    <h1>Search for a Planet</h1>
+    <input type="text" id="planetId" placeholder="Enter planet ID">
+    <button onclick="getPlanet()">Search</button>
+    <button onclick="getAllPlanets()">Get All Planets</button>
+    
+    <div id="result"></div>
+    <div id="allPlanetsResult"></div>
+
+    <h2>favourites</h2>
+    <input type="text" id="favouritePlanetId" placeholder="Enter favourite planet ID">
+    <button onclick="addFavouritePlanet()">Add to Favourites</button>
+    <button onclick="getFavouritePlanets()">Get All Favourite Planets</button>
+    <button onclick="getRandomNonFavourite()">Get Random Non-Favourite Planet</button>
+    <div id="nonFavouriteresult"></div>
+    <div id="favouritePlanetsResult"></div>
+
+    <script>
+        async function getPlanet() {
+            const planetId = document.getElementById("planetId").value;
+
+            // Validate input
+            if (!planetId || isNaN(planetId)) {
+                document.getElementById("result").innerText = 'Please enter a valid number';
+                return;
+            }
+
+            // Send GET request to API
+            const response = await fetch(`api/planets/${planetId}`);
+            
+            // Handle response
+            const planet = (await response.json())[0];
+            document.getElementById("result").innerText = `Planet Name: ${planet.name}`;
+        }
+
+        //  get all planets
+            async function getAllPlanets() {
+                const response = await fetch('api/planets/all');
+                const planets = await response.json();
+                let planetNames = planets.map(planet => planet.name).join(', ');
+                document.getElementById("allPlanetsResult").innerText = `All Planets: ${planetNames}`;
+            }
+
+            async function addFavouritePlanet() {
+                const planetId = document.getElementById("favouritePlanetId").value;
+                const response = await fetch(`api/addfavouritePlanet/${planetId}`, {
+                    method: 'POST'
+                });
+                // Handle the response
+            }
+
+        // Function to get all favourite planets
+            async function getFavouritePlanets() {
+                const response = await fetch('api/favouritePlanets/all');
+                const planets = await response.json();
+                let planetNames = planets.map(planet => planet.name).join(', ');
+                document.getElementById("favouritePlanetsResult").innerText = `favourite Planets: ${planetNames}`;
+            }
+            async function getRandomNonFavourite() {
+                const response = await fetch('api/getRandomNonFavourite/');
+                
+                const planet = await response.json();
+                document.getElementById("favouritePlanetsResult").innerText = `Random Non-favourite Planet: ${planet.name}`;
+        }
+    </script>
+</body>
+</html>
+
