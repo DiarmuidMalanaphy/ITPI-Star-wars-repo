@@ -18,11 +18,12 @@
     <div id="result"></div>
     <div id="allPlanetsResult"></div>
 
-    <h2>favourites</h2>
+    <h2>Favourites</h2>
     <input type="text" id="favouritePlanetId" placeholder="Enter favourite planet ID">
     <button onclick="addFavouritePlanet()">Add to Favourites</button>
     <button onclick="getFavouritePlanets()">Get All Favourite Planets</button>
     <button onclick="getRandomNonFavourite()">Get Random Non-Favourite Planet</button>
+    <button onclick="deleteFavouritePlanet()">Delete from Favourites</button>
     <div id="nonFavouriteresult"></div>
     <div id="favouritePlanetsResult"></div>
 
@@ -31,8 +32,12 @@
             const planetId = document.getElementById("planetId").value;
 
             // Validate input
-            if (!planetId || isNaN(planetId)) {
-                document.getElementById("result").innerText = 'Please enter a valid number';
+            const planetIdsString = document.getElementById("planetId").value;
+            const planetIds = planetIdsString.split(',').map(id => id.trim()); // Trimming the whitespace
+
+            // Validate all are numbers
+            if (planetIds.some(id => isNaN(id))) {
+                document.getElementById("result").innerText = 'Please enter valid numbers separated by commas';
                 return;
             }
 
@@ -40,8 +45,9 @@
             const response = await fetch(`api/planets/${planetId}`);
             
             // Handle response
-            const planet = (await response.json())[0];
-            document.getElementById("result").innerText = `Planet Name: ${planet.name}`;
+            const planets = await response.json();
+            let planetNames = planets.map(planet => planet.name).join(', ');
+            document.getElementById("result").innerText = `Planets: ${planetNames}`;
         }
 
         //  get all planets
@@ -54,7 +60,7 @@
 
             async function addFavouritePlanet() {
                 const planetId = document.getElementById("favouritePlanetId").value;
-                const response = await fetch(`api/addfavouritePlanet/${planetId}`, {
+                const response = await fetch(`api/planets/favourites/add/${planetId}`, {
                     method: 'POST'
                 });
                 // Handle the response
@@ -62,17 +68,31 @@
 
         // Function to get all favourite planets
             async function getFavouritePlanets() {
-                const response = await fetch('api/favouritePlanets/all');
+                const response = await fetch('/api/planets/favourites/all');
                 const planets = await response.json();
                 let planetNames = planets.map(planet => planet.name).join(', ');
                 document.getElementById("favouritePlanetsResult").innerText = `favourite Planets: ${planetNames}`;
             }
             async function getRandomNonFavourite() {
-                const response = await fetch('api/getRandomNonFavourite/');
+                const response = await fetch('api/planets/favourites/randomnon');
                 
                 const planet = await response.json();
                 document.getElementById("favouritePlanetsResult").innerText = `Random Non-favourite Planet: ${planet.name}`;
         }
+            async function deleteFavouritePlanet() {
+                const planetId = document.getElementById("favouritePlanetId").value;
+                const response = await fetch(`/api/planets/favourites/delete/${planetId}`, {
+                    method: 'DELETE'
+                });
+                // Handle the response, maybe update the favorite planets list
+                if (response.status === 204) {
+                    // Deleted successfully, perhaps call getFavouritePlanets() to refresh the list
+                    getFavouritePlanets();
+                } else {
+                    // Handle error
+                    console.log(`Failed to delete the favourite planet: ${response.status}`);
+                }
+            }
     </script>
 </body>
 </html>

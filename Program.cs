@@ -1,11 +1,20 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Builder;
-using System;
-using System.Net.Http.Json;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
 
 
+/// To-dos to improve performance
+/// 1. Minimise calls to API
+///  Could implement this by downloading the entire planet set - Fast but could call way too much data, the user might only require one or two
+///  Could only download the planet if the user has specifically requested it beforehand, minimises unneccessary calls but
+///  batch calling is significantly faster than calling one at a time, I'm fairly sure the API limits you to 10000 calls a day too.
+///   Notes - I've partially implemented this already in the Planet Info database, the only thing left to implement is the ability
+///           to check the database before calling the API.
+/// 2. Minimise the amount of deserialisation
+///   The only way to do this is to mess around with JSON a bit, because I know there's a feature that allows you to ignore the lists when converting into db.
+///   Issue is that it gets a bit finicky, a lot simpler to handle it as it is now.
+///   
+/// Essentially the main issue right now is that it's bottlenecked on the internet.
 
 //This section is fairly boiler plate.
 
@@ -17,38 +26,46 @@ builder.Services.AddDbContext<PlanetDB>(opt => opt.UseInMemoryDatabase("PlanetLi
 
 var app = builder.Build();
 
-//API begins
+///         API begins
 
 
-// Get all planets from swapi
+/// Get all planets from swapi
 
 app.MapGet("/api/planets/all", async () =>
 {
     using var httpClient = new HttpClient();
     List<Planet> allPlanets = new List<Planet>();
-
-
+    // The API returns a sort of linked list structure, where the final entry is the next entry, and it only returns
+    // 10 planets per entry.
+    // The nextURL represents the URL we search.
+    // We always start with this.
     string nextUrl = "https://swapi.dev/api/planets/";
-    
+    //When it's over the final element redirects you to null.
     while (nextUrl != null)
             {
                 HttpResponseMessage response = await httpClient.GetAsync(nextUrl);
                 if (response.IsSuccessStatusCode)
                 {
-                    string content = await response.Content.ReadAsStringAsync();
-                    JObject jsonResponse = JObject.Parse(content);
-
-                    JArray planets = (JArray)jsonResponse["results"];
-                    foreach (JObject Jplanet in planets){
-                        Planet planet = JsonConvert.DeserializeObject<Planet>(Jplanet.ToString());
+                    // Go through the page scanning each page for the planets and putting them in a planet object.
+                    
+                    try{
+                        string content = await response.Content.ReadAsStringAsync();
+                        JObject jsonResponse = JObject.Parse(content);
+                        JArray planets = (JArray)jsonResponse["results"];
                         
+                        foreach (JObject Jplanet in planets){
+                            Planet planet = JsonConvert.DeserializeObject<Planet>(Jplanet.ToString());
+                            allPlanets.Add(planet);
 
-                        allPlanets.Add(planet);
-
-                    }
+                        }
                     
 
-                    nextUrl = (string)jsonResponse["next"];
+                        nextUrl = (string)jsonResponse["next"];
+                    }
+                    catch{
+                        return Results.Created("An error occurred while processing your request.",500);
+                    }
+                    
                 }
                 else
                 {
@@ -60,20 +77,19 @@ app.MapGet("/api/planets/all", async () =>
     return Results.Ok(allPlanets);
 });
 
-// Get a list of planets based on IDs.
+
+/// Get a list of planets based on IDs works for one or a multiplicity.
 
 app.MapGet("/api/planets/{ids}", async (string ids) =>
 {
     List<int> planetIds = ids.Split(',').Select(int.Parse).ToList();
     List<Planet> allPlanets = new List<Planet>();
     foreach (int id in planetIds){
-
             try {
                 Planet planet = await getPlanetAsync(id);
                 allPlanets.Add(planet);    
-                }
-            catch
-                {
+            }
+            catch {
                     Console.WriteLine($"Failed to get data");
                 }
             }
@@ -82,11 +98,10 @@ app.MapGet("/api/planets/{ids}", async (string ids) =>
     return Results.Ok(allPlanets);
 });
 
-// Get all favourite planets
+/// Get all favourite planets
 
-
-app.MapGet("/api/favouritePlanets/all", async (PlanetDB db) => 
-{
+app.MapGet("/api/planets/favourites/all", async (PlanetDB db) => 
+    {
     var favouritePlanetsInfo = await db.Planets.Where(p => p.IsFavourite).ToListAsync();
     var favouritePlanets = new List<Planet>();
 
@@ -103,21 +118,12 @@ app.MapGet("/api/favouritePlanets/all", async (PlanetDB db) =>
 });
 
 
-// Get Planet based off of ID
-// Not sure if I'll extend this feature but the idea is to have previously called planets be stored locally
-// To minimise api calls.
 
 
-//app.MapGet("/planets/{id}", async (int id, PlanetDB db) =>
-//    await db.Planets.FindAsync(id)
-//        is Planet planet
-//            ? Results.Ok(planet)
-//            : Results.NotFound());
 
+/// Make planet a favourite
 
-// Make planet a favourite
-
-app.MapPost("/api/addfavouritePlanet/{ids}", async (string ids, PlanetDB db) =>
+app.MapPost("/api/planets/favourites/add/{ids}", async (string ids, PlanetDB db) =>
 {
     try 
     {
@@ -152,9 +158,9 @@ app.MapPost("/api/addfavouritePlanet/{ids}", async (string ids, PlanetDB db) =>
         }
     });
 
-// Delete a planet from favourites.
+/// Delete a planet from favourites.
 
-app.MapDelete("/api/deletefavourite/{id}", async (int id, PlanetDB db) =>
+app.MapDelete("/api/planets/favourites/delete/{id}", async (int id, PlanetDB db) =>
 {
     // Look for the planet info with the given id
     var planetInfo = await db.Planets.FindAsync(id);
@@ -171,9 +177,13 @@ app.MapDelete("/api/deletefavourite/{id}", async (int id, PlanetDB db) =>
     return Results.NotFound();
 });
 
-app.MapGet("/api/getRandomNonFavourite/",async (PlanetDB db) =>
+/// Generate random non favourite
+// This function isn't great to be honest, there's a lot of room for improvement but it works and the optimisations would honestly 
+// minimal time saves.
+
+app.MapGet("/api/planets/favourites/randomnon",async (PlanetDB db) =>
 {
-    //Going to implement a Naive solution to this problem 
+    // Going to implement a Naive solution to this problem 
     // Go through the planetInfo db and get all the id numbers from that
     var favouriteIds = await db.Planets
                                 .Select(p => p.Id)
@@ -198,23 +208,31 @@ app.MapGet("/api/getRandomNonFavourite/",async (PlanetDB db) =>
 }  );
 
 
-//Function to get planets based on an API id, may expand this to look at db first
+/// Function to get planets based on an API ID
+// To-do if going for performance gains make this scan the database first.
+// Getting a bunch of random IDs is horribly inefficient otherwise.
+// The favourite function is quite slow.
 
 async Task<Planet> getPlanetAsync (int APIid){
     using var httpClient = new HttpClient();
     
     string url = "https://swapi.dev/api/planets/";
     HttpResponseMessage response = await httpClient.GetAsync(url+APIid);
+    try{
     
-    if (response.IsSuccessStatusCode)
-        {
-        string content = await response.Content.ReadAsStringAsync();
+    
+        if (response.IsSuccessStatusCode)
+            {
+            string content = await response.Content.ReadAsStringAsync();
 
-        Planet planet = JsonConvert.DeserializeObject<Planet>(content);
+            Planet planet = JsonConvert.DeserializeObject<Planet>(content);
 
-        return(planet);
-        }
-    throw new HttpRequestException($"Failed to fetch planet. Status code: {response.StatusCode}");
+            return(planet);
+            }
+    }
+    catch{}
+    
+    throw new HttpRequestException($"Failed to fetch planet. Status code: {response.StatusCode}"); 
 }
 app.UseDefaultFiles(new DefaultFilesOptions
 {
