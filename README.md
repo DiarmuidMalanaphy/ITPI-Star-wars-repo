@@ -1,4 +1,4 @@
-# ITPI-Star-wars-repo
+# Star-wars-repo
 Goal: Create a minimal api in C# that saves a list of favourite Star Wars planets.
 
 The API Should:
@@ -11,7 +11,3 @@ The API Should:
 Bonus Task:
 
     GET a random planet that has not yet been favourited from the SWAPI API. (https://swapi.dev)
-
-Here is a tutorial that can help with your task.
-
-https://learn.microsoft.com/en-us/aspnet/core/tutorials/min-web-api?view=aspnetcore-7.0&tabs=visual-studio
